@@ -13,7 +13,6 @@ import re
 import dateutil.parser
 import logging
 
-from table_printer import *
 from smart_stocker_global import *
 from smart_stocker_public_data import *
 
@@ -172,7 +171,7 @@ def GetAllStocks(gd_client):
 
 
 if __name__ == "__main__":
-    client = LoginMyGoogleWithFiles()
+    gd_client = LoginMyGoogleWithFiles()
     GetAllStocks(gd_client)
     GetTransectionRecords(client)
     PrintData(','.join(sys.argv[1:]).split(','))

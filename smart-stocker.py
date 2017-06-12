@@ -13,7 +13,6 @@ import re
 import os.path
 import cgi
 
-from table_printer import *
 from smart_stocker_private_data import *
 from smart_stocker_public_data import *
 from smart_stocker_global import *
