@@ -56,9 +56,15 @@ Apache license (http://www.apache.org/licenses/LICENSE-2.0.html)
             data.addRows(TRADES[stock]);
 
             var div = document.createElement("div");
-            div.style = "position: absolute; left: 0px; top: 0px; width: 95%; height: 100%;";
             document.body.appendChild(div);
-            // document.body.appendChild(document.createElement('hr'));
+            if (Object.keys(TRADES).length > 1) {
+              div.style = "width: 95%; height: 600px;";
+              hr = document.createElement("hr");
+              hr.style = "width: 100%";
+              document.body.appendChild(hr);
+            } else {
+              div.style = "position: absolute; left: 0px; top: 0px; width: 95%; height: 100%;";
+            }
             new google.visualization.LineChart(div).draw(
               data,
               {

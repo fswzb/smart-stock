@@ -272,6 +272,7 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
     for ticker in tickers:
         prev_date = datetime.date(2000, 1, 1)
         shares, invest = 0, 0.0
+        currency = ''
         for record in all_records:
             if transformer(record['ticker']) != ticker: continue
             if record['name'] == '': continue
@@ -298,19 +299,20 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
             ])
             if len(all_trades[ticker]) > 1:
                 assert all_trades[ticker][-1][0] > all_trades[ticker][-2][0]
+        if shares > 0:
+            pr = GetMarketPrice(ticker)
+            mv = pr * shares
+            all_trades[ticker].append([
+                # 'new Date(%d, %d, %d)'%(trans_date.year, trans_date.month - 1, trans_date.day),
+                int(time.mktime(datetime.date.today().timetuple())) * 1000,
+                pr,
+                "+0",
+                'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000)
+                  + '\n{}'.format(record['reason'])
+            ])
+
     content = ''
     if len(all_trades) > 0:
-        pr = GetMarketPrice(ticker)
-        mv = pr * shares
-        currency = STOCK_INFO[ticker]['currency']
-        all_trades[ticker].append([
-            # 'new Date(%d, %d, %d)'%(trans_date.year, trans_date.month - 1, trans_date.day),
-            int(time.mktime(datetime.date.today().timetuple())) * 1000,
-            pr,
-            0,
-            'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000)
-              + '\n{}'.format(record['reason'])
-        ])
         with open(template_file, 'r') as temp_file:
             content = temp_file.read() 
         content = content.replace('%TRADES%', ',\n'.join([
