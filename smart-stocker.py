@@ -308,7 +308,6 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
                 pr,
                 "+0",
                 'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000)
-                  + '\n{}'.format(record['reason'])
             ])
 
     content = ''
