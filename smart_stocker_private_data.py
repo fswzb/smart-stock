@@ -169,7 +169,6 @@ def PrintData(names):
 def GetAllStocks(gd_client):
     GetCategorizedStocks(gd_client)
 
-
 if __name__ == "__main__":
     gd_client = LoginMyGoogleWithFiles()
     GetAllStocks(gd_client)

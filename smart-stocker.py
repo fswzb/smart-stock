@@ -76,10 +76,12 @@ def CreateHtmlPageAndBody():
 def WriteToStaticHtmlFile(filename, content, anchor):
     link = 'smart-stocker/' + filename
     filename = WWW_ROOT + '/' + link
-    with open(filename, 'w') as output_file:
-        os.chmod(filename, 0o600)
-        output_file.write(content) 
-    return HTML.link(anchor, link)
+    if content != '':
+        with open(filename, 'w') as output_file:
+            os.chmod(filename, 0o600)
+            output_file.write(content) 
+    link = HTML.link(anchor, link)
+    return link.replace('<a href=', '<a target="_blank" href=')
 
 def InitLogger():
     FORMAT = '%(asctime)s %(filename)s:%(lineno)s %(levelname)s:%(message)s'
@@ -258,8 +260,65 @@ def PrintAccountInfo():
         logging.info('%s\n'%(str(account_info)))
 
     return PrintTableMapHtml(header, records)
+
+def OutputVisual(all_records, tickers, path, filename, anchor):
+    template_file = path + '/visual-trades-temp.html' 
+    all_trades = {}
+    all_records.sort(key = lambda record: record['date'])
+    min_day_gap = 1
+    transformer = lambda ticker: ticker if ticker.find('@') == -1 else ticker[0:ticker.find('@')]
+    if '*' in tickers:
+        tickers = set([transformer(record['ticker']) for record in all_records])
+    for ticker in tickers:
+        prev_date = datetime.date(2000, 1, 1)
+        shares, invest = 0, 0.0
+        for record in all_records:
+            if transformer(record['ticker']) != ticker: continue
+            if record['name'] == '': continue
+            CODE_TO_NAME[ticker] = record['name']
+            ticker = transformer(ticker)
+            currency = record['currency']
+            trans_date = record['date']
+            diff_days = (trans_date - prev_date).days
+            if diff_days < min_day_gap:
+                trans_date = prev_date + datetime.timedelta(days = min_day_gap)
+            prev_date = trans_date
+            shares += record['amount']
+            invest += record['commission'] + record['amount'] * record['price']
+            mv = shares * record['price']
+            if ticker not in all_trades: all_trades[ticker] = []
+            if record['amount'] == 0: continue
+            all_trades[ticker].append([
+                # 'new Date(%d, %d, %d)'%(trans_date.year, trans_date.month - 1, trans_date.day),
+                int(time.mktime(trans_date.timetuple())) * 1000,
+                record['price'],
+                ('+' if record['amount'] > 0 else '') + str(int(record['amount'])),
+                'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000)
+                  + '\n{}'.format(record['reason'])
+            ])
+            if len(all_trades[ticker]) > 1:
+                assert all_trades[ticker][-1][0] > all_trades[ticker][-2][0]
+    content = ''
+    if len(all_trades) > 0:
+        pr = GetMarketPrice(ticker)
+        mv = pr * shares
+        currency = STOCK_INFO[ticker]['currency']
+        all_trades[ticker].append([
+            # 'new Date(%d, %d, %d)'%(trans_date.year, trans_date.month - 1, trans_date.day),
+            int(time.mktime(datetime.date.today().timetuple())) * 1000,
+            pr,
+            0,
+            'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000)
+              + '\n{}'.format(record['reason'])
+        ])
+        with open(template_file, 'r') as temp_file:
+            content = temp_file.read() 
+        content = content.replace('%TRADES%', ',\n'.join([
+            '"%s": %s'%(CODE_TO_NAME[key], str(value)) for key, value in all_trades.items()
+        ]))
+    return WriteToStaticHtmlFile(filename, content, anchor)
       
-def PrintHoldingSecurities():
+def PrintHoldingSecurities(all_records):
     stat_records_map = []
     
     summation = {
@@ -286,7 +345,11 @@ def PrintHoldingSecurities():
                 'Chg': chg,
                 'sdv/p': myround(FINANCAIL_DATA_ADVANCE[ticker]['sdv/p'] * 100, 2) if 'sdv/p' in FINANCAIL_DATA_ADVANCE[ticker] else 0.0,
                 'ddv/p': myround(FINANCAIL_DATA_ADVANCE[ticker]['ddv/p'] * 100, 2) if 'ddv/p' in FINANCAIL_DATA_ADVANCE[ticker] else 0.0,
-                'Stock name': name + '(' + ticker + ')',
+                'Stock name': '{}({})'.format(
+                    OutputVisual(all_records, [ticker],
+                    os.path.dirname(sys.argv[0]),
+                    'charts/{}.html'.format(ticker) , name),
+                    ticker)
         }
         stat_records_map.append(record)
     
@@ -345,50 +408,6 @@ def PrintStocks(names):
             tableMap.append(data)
     tableMap.sort(key = lambda recordMap: recordMap['p/book-value'] if 'p/book-value' in recordMap else 0)
     PrintTableMap(header, tableMap, float_precision = 3, header_transformer = lambda header: header.replace('book-value', 'bv'))
-
-def OutputVisual(all_records, tickers, path):
-    template_file = path + '/visual-trades-temp.html' 
-    all_trades = {}
-    all_records.sort(key = lambda record: record['date'])
-    min_day_gap = 1
-    transformer = lambda ticker: ticker if ticker.find('@') == -1 else ticker[0:ticker.find('@')]
-    if '*' in tickers:
-        tickers = set([transformer(record['ticker']) for record in all_records])
-    for ticker in tickers:
-        prev_date = datetime.date(2000, 1, 1)
-        shares, invest = 0, 0.0
-        for record in all_records:
-            if transformer(record['ticker']) != ticker: continue
-            if record['name'] == '': continue
-            CODE_TO_NAME[ticker] = record['name']
-            ticker = transformer(ticker)
-            currency = record['currency']
-            trans_date = record['date']
-            diff_days = (trans_date - prev_date).days
-            if diff_days < min_day_gap:
-                trans_date = prev_date + datetime.timedelta(days = min_day_gap)
-            prev_date = trans_date
-            shares += record['amount']
-            invest += record['commission'] + record['amount'] * record['price']
-            mv = shares * record['price']
-            if ticker not in all_trades: all_trades[ticker] = []
-            all_trades[ticker].append([
-                # 'new Date(%d, %d, %d)'%(trans_date.year, trans_date.month - 1, trans_date.day),
-                int(time.mktime(trans_date.timetuple())) * 1000,
-                record['price'],
-                ('+' if record['amount'] > 0 else '') + str(int(record['amount'])),
-                'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000),
-            ])
-            if len(all_trades[ticker]) > 1:
-                assert all_trades[ticker][-1][0] > all_trades[ticker][-2][0]
-                
-    content = ''
-    with open(template_file, 'r') as temp_file:
-        content = temp_file.read() 
-    content = content.replace('%TRADES%', ',\n'.join([
-        '"%s": %s'%(CODE_TO_NAME[key], str(value)) for key, value in all_trades.items()
-    ]))
-    return WriteToStaticHtmlFile('charts.html', content, 'Visual trades')
 
 def PrintProfitBreakDown():
     tableMap = []
@@ -495,10 +514,10 @@ def main():
         PopulateFinancialData()
     
         body.p(PrintAccountInfo(), escape=False)
-        body.p(PrintHoldingSecurities(), escape=False)
+        body.p(PrintHoldingSecurities(all_records), escape=False)
         body.p(RunStrategies(), escape=False)
         body.p(PrintProfitBreakDown(), escape=False)
-        body.p(OutputVisual(all_records, input_args['visual'], os.path.dirname(sys.argv[0])), escape=False)
+        body.p(OutputVisual(all_records, input_args['visual'], os.path.dirname(sys.argv[0]), 'charts.html', 'Visual trades'), escape=False)
         body.p(PrintDeposit(all_records, os.path.dirname(sys.argv[0])), escape=False)
 
     except Exception as ins:
