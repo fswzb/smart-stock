@@ -273,11 +273,12 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
         prev_date = datetime.date(2000, 1, 1)
         shares, invest = 0, 0.0
         currency = ''
+        logging.info("Preparing trading chart for: {}".format(ticker))
         for record in all_records:
-            if transformer(record['ticker']) != ticker: continue
+            if record['ticker'] != ticker: continue
             if record['name'] == '': continue
             CODE_TO_NAME[ticker] = record['name']
-            ticker = transformer(ticker)
+            # ticker = transformer(ticker)
             currency = record['currency']
             trans_date = record['date']
             diff_days = (trans_date - prev_date).days
@@ -287,8 +288,8 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
             shares += record['amount']
             invest += record['commission'] + record['amount'] * record['price']
             mv = shares * record['price']
-            if ticker not in all_trades: all_trades[ticker] = []
             if record['amount'] == 0: continue
+            if ticker not in all_trades: all_trades[ticker] = []
             all_trades[ticker].append([
                 # 'new Date(%d, %d, %d)'%(trans_date.year, trans_date.month - 1, trans_date.day),
                 int(time.mktime(trans_date.timetuple())) * 1000,
