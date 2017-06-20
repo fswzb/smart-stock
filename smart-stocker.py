@@ -308,7 +308,12 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
                 int(time.mktime(datetime.date.today().timetuple())) * 1000,
                 pr,
                 "+0",
-                'shares: %d profit: %dK %s mv: %dK'%(shares, (mv - invest) / 1000, currency, mv / 1000)
+                'shares: {} profit: {:.1f}K({:.0f}%) {} mv: {:.1f}K'.format(
+                    shares, 
+                    (mv - invest) / 1000.0,
+                    100 * (1.0 * mv / invest - 1.0),
+                    currency,
+                    mv / 1000.0)
             ])
 
     content = ''
