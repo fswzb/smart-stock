@@ -311,7 +311,7 @@ def OutputVisual(all_records, tickers, path, filename, anchor):
                 'shares: {} profit: {:.1f}K({:.0f}%) {} mv: {:.1f}K'.format(
                     shares, 
                     (mv - invest) / 1000.0,
-                    100 * (1.0 * mv / invest - 1.0),
+                    100.0 * (mv - invest) / mv,
                     currency,
                     mv / 1000.0)
             ])
